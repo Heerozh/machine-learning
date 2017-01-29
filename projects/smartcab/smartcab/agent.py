@@ -32,13 +32,15 @@ class LearningAgent(Agent):
 
         # Select the destination as the new location to route to
         self.planner.route_to(destination)
-        
-        ########### 
-        ## TO DO ##
-        ###########
+
         # Update epsilon using a decay function of your choice
         # Update additional class parameters as needed
         # If 'testing' is True, set epsilon and alpha to 0
+        if testing:
+            self.alpha = 0
+            self.epsilon = 0
+        else:
+            self.epsilon = self.epsilon - 0.05
 
         return None
 
