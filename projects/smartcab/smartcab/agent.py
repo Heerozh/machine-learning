@@ -39,12 +39,12 @@ class LearningAgent(Agent):
             self.epsilon = 0
         else:
             self.total_trials = self.total_trials + 1
-            self.epsilon = math.exp(-self.alpha * self.total_trials)
-            if self.total_trials >= 20: self.epsilon = 0.6 
-            if self.total_trials == 100: self.epsilon = 0 
-            #self.epsilon = self.epsilon - 0.01 #D
             #self.epsilon = math.exp(-self.alpha * self.total_trials)
-            #self.epsilon = math.exp(-self.alpha * 0.5 * self.total_trials)
+            if self.total_trials < 25: self.epsilon = self.epsilon - 0.015  
+            if self.total_trials >= 25: self.epsilon = self.epsilon - 0.025 
+            #self.epsilon = self.epsilon - 0.02 #D
+            #self.epsilon = math.exp(-self.alpha * self.total_trials)
+            #self.epsilon = math.exp(-self.alpha * 0.3 * self.total_trials)
             #self.epsilon = math.pow(self.alpha, self.total_trials) #F nochance
             #self.epsilon = 1 / math.pow(self.total_trials, 2) #F
             #self.epsilon = math.cos(self.total_trials * self.alpha) #F
@@ -130,8 +130,11 @@ class LearningAgent(Agent):
         # When learning, implement the value iteration update rule
         #   Use only the learning rate 'alpha' (do not use the discount factor 'gamma')
         if self.learning:
-            self.Q[state][action] = reward + self.alpha * self.get_maxQ(state)
-
+            lastq = self.Q[state]
+            nextstate = self.build_state()
+            nextmaxq = self.get_maxQ(nextstate) if self.Q.has_key(nextstate) else 0
+            lastq[action] = (1 - self.alpha) * lastq[action] + self.alpha * (reward + 0)#nextmaxq)
+            #print(state, nextstate)
         return
 
 
