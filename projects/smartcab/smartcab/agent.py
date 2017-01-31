@@ -19,10 +19,8 @@ class LearningAgent(Agent):
         self.epsilon = epsilon   # Random exploration factor
         self.alpha = alpha       # Learning factor
 
-        ###########
-        ## TO DO ##
-        ###########
         # Set any additional class parameters as needed
+        self.total_trials = 0
 
 
     def reset(self, destination=None, testing=False):
@@ -40,7 +38,17 @@ class LearningAgent(Agent):
             self.alpha = 0
             self.epsilon = 0
         else:
-            self.epsilon = self.epsilon - 0.05
+            self.total_trials = self.total_trials + 1
+            self.epsilon = math.exp(-self.alpha * self.total_trials)
+            if self.total_trials >= 20: self.epsilon = 0.6 
+            if self.total_trials == 100: self.epsilon = 0 
+            #self.epsilon = self.epsilon - 0.01 #D
+            #self.epsilon = math.exp(-self.alpha * self.total_trials)
+            #self.epsilon = math.exp(-self.alpha * 0.5 * self.total_trials)
+            #self.epsilon = math.pow(self.alpha, self.total_trials) #F nochance
+            #self.epsilon = 1 / math.pow(self.total_trials, 2) #F
+            #self.epsilon = math.cos(self.total_trials * self.alpha) #F
+            #print('reset: ', self.epsilon, self.alpha, self.total_trials)
 
         return None
 
@@ -52,10 +60,12 @@ class LearningAgent(Agent):
         # Collect data about the environment
         waypoint = self.planner.next_waypoint() # The next waypoint
         inputs = self.env.sense(self)           # Visual input - intersection light and traffic
-        deadline = self.env.get_deadline(self)  # Remaining deadline
+        #deadline = self.env.get_deadline(self)  # Remaining deadline
 
         # Set 'state' as a tuple of relevant data for the agent
-        state = (waypoint, inputs['light'], inputs['oncoming'], inputs['left'], inputs['right'])
+        oncoming = 'right' if inputs['oncoming'] == 'forward' else inputs['oncoming']
+        left = 'forward' if inputs['left'] == 'forward' else None
+        state = (waypoint, inputs['light'], oncoming, left)
 
         return state
 
@@ -80,7 +90,7 @@ class LearningAgent(Agent):
         #   Then, for each action available, set the initial Q-value to 0.0
         if self.learning:
             if not self.Q.has_key(state):
-                self.Q[state] = { k: 0.0  for k in self.valid_actions  }
+                self.Q[state] = {k:0.0 for k in self.valid_actions}
 
             return self.Q[state]
         else:
@@ -96,9 +106,6 @@ class LearningAgent(Agent):
         self.next_waypoint = self.planner.next_waypoint()
         action = None
 
-        ###########
-        ## TO DO ##
-        ###########
         # When not learning, choose a random action
         # When learning, choose a random action with 'epsilon' probability
         #   Otherwise, choose an action with the highest Q-value for the current state
@@ -108,6 +115,7 @@ class LearningAgent(Agent):
             else:
                 state_q = self.Q[state]
                 action = max(state_q, key=lambda k: state_q[k])
+                print(state, state_q, action)
         else:
             action = random.choice(self.valid_actions)
 
@@ -159,7 +167,8 @@ def run():
     #   learning   - set to True to force the driving agent to use Q-learning
     #    * epsilon - continuous value for the exploration factor, default is 1
     #    * alpha   - continuous value for the learning rate, default is 0.5
-    agent = env.create_agent(LearningAgent, learning=True)
+    agent = env.create_agent(LearningAgent, learning=True, alpha=0.2)
+    #agent = env.create_agent(LearningAgent, learning=False, alpha = 0.2)
 
     ##############
     # Follow the driving agent
@@ -174,14 +183,15 @@ def run():
     #   display      - set to False to disable the GUI if PyGame is enabled
     #   log_metrics  - set to True to log trial and simulation results to /logs
     #   optimized    - set to True to change the default log file name
-    sim = Simulator(env, update_delay=0.001, log_metrics=True, display=False)
+    sim = Simulator(env, update_delay=0, log_metrics=True, display=False, optimized=True)
+    #sim = Simulator(env, update_delay=0.001, log_metrics=False, display=True, optimized=False)
 
     ##############
     # Run the simulator
     # Flags:
     #   tolerance  - epsilon tolerance before beginning testing, default is 0.05
     #   n_test     - discrete number of testing trials to perform, default is 0
-    sim.run(n_test=10)
+    sim.run(n_test=20)
 
 
 if __name__ == '__main__':
