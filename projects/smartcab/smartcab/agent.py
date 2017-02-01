@@ -1,3 +1,4 @@
+# coding=utf-8
 import random
 import math
 from environment import Agent, Environment
@@ -39,9 +40,9 @@ class LearningAgent(Agent):
             self.epsilon = 0
         else:
             self.total_trials = self.total_trials + 1
-            #self.epsilon = math.exp(-self.alpha * self.total_trials)
-            if self.total_trials < 25: self.epsilon = self.epsilon - 0.015  
-            if self.total_trials >= 25: self.epsilon = self.epsilon - 0.025 
+            self.epsilon = math.exp(-0.008 * self.total_trials)
+            #if self.total_trials < 25: self.epsilon = self.epsilon - 0.015  
+            #if self.total_trials >= 25: self.epsilon = self.epsilon - 0.025 
             #self.epsilon = self.epsilon - 0.02 #D
             #self.epsilon = math.exp(-self.alpha * self.total_trials)
             #self.epsilon = math.exp(-self.alpha * 0.3 * self.total_trials)
@@ -49,6 +50,7 @@ class LearningAgent(Agent):
             #self.epsilon = 1 / math.pow(self.total_trials, 2) #F
             #self.epsilon = math.cos(self.total_trials * self.alpha) #F
             #print('reset: ', self.epsilon, self.alpha, self.total_trials)
+            #self.alpha = self.alpha - 0.001
 
         return None
 
@@ -63,9 +65,7 @@ class LearningAgent(Agent):
         #deadline = self.env.get_deadline(self)  # Remaining deadline
 
         # Set 'state' as a tuple of relevant data for the agent
-        oncoming = 'right' if inputs['oncoming'] == 'forward' else inputs['oncoming']
-        left = 'forward' if inputs['left'] == 'forward' else None
-        state = (waypoint, inputs['light'], oncoming, left)
+        state = (waypoint, inputs['light'], inputs['oncoming'], inputs['left'], inputs['right'])
 
         return state
 
@@ -109,13 +109,14 @@ class LearningAgent(Agent):
         # When not learning, choose a random action
         # When learning, choose a random action with 'epsilon' probability
         #   Otherwise, choose an action with the highest Q-value for the current state
+        state_q = self.Q[state]
         if self.learning:
-            if random.random() <= self.epsilon:
+            if random.random() < self.epsilon:
                 action = random.choice(self.valid_actions)
             else:
-                state_q = self.Q[state]
-                action = max(state_q, key=lambda k: state_q[k])
-                print(state, state_q, action)
+                # random一下小数部分让相同值的action随机选一个
+                action = max(state_q, key=lambda k: state_q[k] + random.random() / 10000)
+                #print(state, state_q, action)
         else:
             action = random.choice(self.valid_actions)
 
@@ -133,6 +134,7 @@ class LearningAgent(Agent):
             lastq = self.Q[state]
             nextstate = self.build_state()
             nextmaxq = self.get_maxQ(nextstate) if self.Q.has_key(nextstate) else 0
+            # 这里计算结果放到Q表里了，因为lastq是self.Q[state]的引用，所以这里改了self.Q里对应的也改了
             lastq[action] = (1 - self.alpha) * lastq[action] + self.alpha * (reward + 0)#nextmaxq)
             #print(state, nextstate)
         return
@@ -170,7 +172,7 @@ def run():
     #   learning   - set to True to force the driving agent to use Q-learning
     #    * epsilon - continuous value for the exploration factor, default is 1
     #    * alpha   - continuous value for the learning rate, default is 0.5
-    agent = env.create_agent(LearningAgent, learning=True, alpha=0.2)
+    agent = env.create_agent(LearningAgent, learning=True, alpha=0.5)
     #agent = env.create_agent(LearningAgent, learning=False, alpha = 0.2)
 
     ##############
@@ -194,7 +196,7 @@ def run():
     # Flags:
     #   tolerance  - epsilon tolerance before beginning testing, default is 0.05
     #   n_test     - discrete number of testing trials to perform, default is 0
-    sim.run(n_test=20)
+    sim.run(n_test=20, tolerance=0.01)
 
 
 if __name__ == '__main__':
