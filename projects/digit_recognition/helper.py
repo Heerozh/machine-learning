@@ -2,6 +2,8 @@ import numpy as np
 import tensorflow as tf
 import functools
 
+
+# create tf weight and biases var pair
 def var(kernel_shape):
     """weights biases var init"""
     weight = tf.get_variable("weights", kernel_shape,
@@ -11,7 +13,7 @@ def var(kernel_shape):
     return weight, biases
 
 
-# Conv Layer Model
+# create Conv Layer Model
 def conv_relu(x_input, kernel_shape, pool=False, drop=None):
     """build conv relu layer"""
     weights, biases = var(kernel_shape)
@@ -25,6 +27,7 @@ def conv_relu(x_input, kernel_shape, pool=False, drop=None):
     return rtn
 
 
+# relu layer
 def relu(x_input, kernel_shape, drop=None):
     """build relu layer"""
     weights, biases = var(kernel_shape)
@@ -35,6 +38,7 @@ def relu(x_input, kernel_shape, drop=None):
     return rtn
 
 
+# ts pack
 class Learner:
     batch_size = 128
     func_model = None
@@ -42,48 +46,58 @@ class Learner:
     steps = 1001
     func_loss = None
     func_optimizer = None
+    save_filename = 'default_learner'
+    logits = None
+    graph = None
+    tf_train_data = None
+    tf_drop = None
 
-    def __init__(self, model, accuracy, steps=1001, batch_size=128,
-                 loss = tf.nn.sigmoid_cross_entropy_with_logits,
-                 optimizer = tf.train.AdamOptimizer):
+    def __init__(self, model, accuracy,
+                 steps=1001, batch_size=128,
+                 loss=tf.nn.sigmoid_cross_entropy_with_logits,
+                 optimizer=tf.train.AdamOptimizer,
+                 save='default_learner'):
         self.func_model = model
         self.batch_size = batch_size
         self.func_accuracy = accuracy
         self.steps = steps
         self.func_loss = loss
         self.func_optimizer = optimizer
-        pass
+        self.save_filename = save
 
-    def fit(self, x_data, y_predict, test_data, test_labs):
+    def fit(self, x_data, y_predict, vail_data, vail_labs):
         label_len = functools.reduce(np.dot, y_predict.shape[1:])
-        image_hight = x_data.shape[1]
+        image_height = x_data.shape[1]
         image_width = x_data.shape[2]
         num_channels = x_data.shape[3]
 
-        graph = tf.Graph()
-        with graph.as_default():
+        self.graph = tf.Graph()
+        with self.graph.as_default():
             # Input data.
-            drop = tf.placeholder_with_default(tf.constant(0.), None)
-            tf_train_data = tf.placeholder(tf.float32)
+            self.tf_drop = tf.placeholder_with_default(tf.constant(0.), None, name='drop')
+            self.tf_train_data = tf.placeholder(tf.float32, name='data')
             tf_train_labs = tf.placeholder(tf.float32, shape=(self.batch_size, label_len))
-            tf_test_data = tf.constant(test_data)
-            x_shaped = tf.reshape(tf_train_data, shape=[-1, image_hight, image_width, num_channels])
+            tf_train_shaped = tf.reshape(self.tf_train_data,
+                                         shape=[-1, image_height, image_width, num_channels])
+            print(self.tf_train_data)
+
+            tf_vail_data = tf.constant(vail_data)
+            # tf.cond(tf.greater(tf.shape(tf_test_data)[0], 1),
 
             # Training computation.
             with tf.variable_scope("predict") as scope:
-                logits = self.func_model(x_shaped, drop=drop)
+                self.logits = self.func_model(tf_train_shaped, drop=self.tf_drop)
                 scope.reuse_variables()
-                test_prediction = self.func_model(tf_test_data, drop=None)
+                vail_prediction = self.func_model(tf_vail_data, drop=None)
+                print(self.logits)
 
-            loss = tf.reduce_mean(
-                self.func_loss(logits, tf_train_labs))
-
+            loss = tf.reduce_mean(self.func_loss(self.logits, tf_train_labs))
             # Optimizer.
             optimizer = self.func_optimizer(0.001).minimize(loss)
 
         #########################
 
-        with tf.Session(graph=graph) as session:
+        with tf.Session(graph=self.graph) as session:
             tf.global_variables_initializer().run()
             print('Initialized')
             saver = tf.train.Saver()
@@ -92,24 +106,47 @@ class Learner:
                 batch_data = x_data[offset:(offset + self.batch_size), :, :, :]
                 batch_labels = y_predict[offset:(offset + self.batch_size), :]
                 feed_dict = {
-                    tf_train_data: batch_data,
+                    self.tf_train_data: batch_data,
                     tf_train_labs: batch_labels.reshape(self.batch_size, label_len),
-                    drop: 0.85,
+                    self.tf_drop: 0.85,
                 }
-                _, l, train_p, test_p = session.run(
-                    [optimizer, loss, logits, test_prediction], feed_dict=feed_dict)
+                _, l, train_p, vail_p = session.run(
+                    [optimizer, loss, self.logits, vail_prediction], feed_dict=feed_dict)
 
-                if (step % 50 == 0):
+                if step % 50 == 0:
                     print('Minibatch loss at step %d: %f' % (step, l))
                     print('Minibatch accuracy: %.1f%%' % self.func_accuracy(train_p, batch_labels))
-                    print('Test accuracy: %.1f%%' % self.func_accuracy(test_p, test_labs))
-                    saver.save(session, "./first.model", global_step=step)
-            print("Test accuracy: %.1f%%" % self.func_accuracy(test_p, test_labs))
+                    print('Test accuracy: %.1f%%' % self.func_accuracy(vail_p, vail_labs))
+                    saver.save(session, "./" + self.save_filename, global_step=step)
+            print("Test accuracy: %.1f%%" % self.func_accuracy(vail_p, vail_labs))
+
+    def save(self):
         pass
 
-    def predict(self, imgs):
-        with tf.Session(graph=graph) as session:
+    def load(self, step=""):
+        filename = self.save_filename
+        if len(step) > 0:
+            filename += '-' + step
+
+        if self.graph is None:
+            self.graph = tf.Graph()
+
+        with self.graph.as_default() as g:
+            saver = tf.train.import_meta_graph(filename + ".meta")
+            self.logits = g.get_tensor_by_name('predict/out/add:0')
+            self.tf_train_data = g.get_tensor_by_name('data:0')
+            self.tf_drop = g.get_tensor_by_name('drop:0')
+
+        with tf.Session(graph=self.graph) as session:
             saver.restore(session, tf.train.latest_checkpoint('.'))
-            predict = tf.argmax(tf.reshape(logits, [-1, num_seqlen, num_labels]), 2)
-            return session.run(predict, feed_dict={tf_train_data: imgs})
+
+    def predict(self, imgs):
+        with tf.Session(graph=self.graph) as session:
+            tf.global_variables_initializer().run()
+            return session.run(self.logits,
+                               feed_dict={
+                                   self.tf_train_data: imgs,
+                                   tf_drop: 0.
+                               })
+
 
