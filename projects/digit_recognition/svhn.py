@@ -49,7 +49,7 @@ def read_imgs(path):
     for i in range(len(name)):
         img_file = ''.join([chr(c[0]) for c in st[name[i][0]].value])
         img_file = os.path.join(path, img_file)
-
+        # read labels
         label = st[bbox[i][0]]['label']
         if len(label) == 1:
             labels = [int(label[0][0])]
@@ -59,11 +59,12 @@ def read_imgs(path):
         if len(labels) > 5:
             print('skip', i, labels)
             continue
-        for i in range(min(len(labels), 5)):
-            label_onehot[i, labels[i]] = 1
-        for i in range(len(label), 5):
-            label_onehot[i, 10] = 1
+        for j in range(min(len(labels), 5)):
+            label_onehot[j, labels[j]] = 1
+        for j in range(len(label), 5):
+            label_onehot[j, 10] = 1
         labset[i, :, :] = label_onehot
+        # read image
         try:
             image_data = ndimage.imread(img_file).astype(float)
             # image_data = (image_data - 255. / 2) / 255.
@@ -85,13 +86,13 @@ def read_data_sets(train_dir, validation_size=5000):
                                      SOURCE_URL + TRAIN_IMAGES)
 
     local_path = maybe_extract(local_file)[0]
-    train_images, train_lables = read_imgs(local_path)
+    train_images, train_labels = read_imgs(local_path)
 
     local_file = base.maybe_download(TEST_IMAGES, train_dir,
                                      SOURCE_URL + TEST_IMAGES)
 
     local_path = maybe_extract(local_file)[0]
-    test_images, test_lables = read_imgs(local_path)
+    test_images, test_labels = read_imgs(local_path)
 
     if not 0 <= validation_size <= len(train_images):
         raise ValueError(
@@ -105,10 +106,10 @@ def read_data_sets(train_dir, validation_size=5000):
 
     return {
         'train_images': train_images,
-        'train_lables': train_labels,
+        'train_labels': train_labels,
 
         'validation_images': validation_images,
         'validation_labels': validation_labels,
         'test_images': test_images,
-        'test_lables': test_lables
+        'test_labels': test_labels
     }
