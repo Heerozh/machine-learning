@@ -82,7 +82,7 @@ class Learner:
                 scope.reuse_variables()
                 _, vail_prediction = self.func_model(tf_vail_data, drop=None)
 
-            loss = tf.reduce_mean(self.func_loss(logits, tf_train_labs))
+            loss = self.func_loss(logits, tf_train_labs)
             # Optimizer.
             optimizer = self.func_optimizer(self.learning_rate).minimize(loss)
 

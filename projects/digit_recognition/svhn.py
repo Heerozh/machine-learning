@@ -67,8 +67,9 @@ def read_imgs(path):
         # read image
         try:
             image_data = ndimage.imread(img_file).astype(float)
-            # image_data = (image_data - 255. / 2) / 255.
-            image_data = np.mean(image_data, -1)
+            image_data = image_data[:,:,0] * 0.2989 + image_data[:,:,1] * 0.5870 + image_data[:,:,2] * 0.114
+            # image_data = np.mean(image_data, -1)
+            image_data = (image_data - 255. / 2) / 255.
             h = image_data.shape[0]
             w = image_data.shape[1]
             image_data = ndimage.zoom(image_data, [IMG_H / h, IMG_W / w])
