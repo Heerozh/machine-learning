@@ -41,7 +41,7 @@ def relu(x_input, kernel_shape, drop=None):
 # ts pack
 class Learner:
     graph = None
-    logits = None
+    train_predict = None
     tf_drop = None
     tf_train_data = None
 
@@ -77,12 +77,12 @@ class Learner:
 
             # Training computation.
             with tf.variable_scope("predict") as scope:
-                self.logits = self.func_model(tf_train_shaped, drop=self.tf_drop)
-                print(self.logits)
+                logits, self.train_predict = self.func_model(tf_train_shaped, drop=self.tf_drop)
+                print(logits)
                 scope.reuse_variables()
-                vail_prediction = self.func_model(tf_vail_data, drop=None)
+                _, vail_prediction = self.func_model(tf_vail_data, drop=None)
 
-            loss = tf.reduce_mean(self.func_loss(self.logits, tf_train_labs))
+            loss = tf.reduce_mean(self.func_loss(logits, tf_train_labs))
             # Optimizer.
             optimizer = self.func_optimizer(self.learning_rate).minimize(loss)
 
@@ -102,7 +102,7 @@ class Learner:
                     self.tf_drop: 0.85,
                 }
                 _, l, train_p, vail_p = session.run(
-                    [optimizer, loss, self.logits, vail_prediction], feed_dict=feed_dict)
+                    [optimizer, loss, self.train_predict, vail_prediction], feed_dict=feed_dict)
 
                 if step % 50 == 0:
                     print('Minibatch loss at step %d: %f' % (step, l))
@@ -119,6 +119,6 @@ class Learner:
                 self.tf_train_data: x_data,
                 self.tf_drop: 0.85,
             }
-            return session.run(self.logits, feed_dict=feed_dict)
+            return session.run(self.train_predict, feed_dict=feed_dict)
 
 
