@@ -44,7 +44,6 @@ class Learner:
     logits = None
     tf_drop = None
     tf_train_data = None
-    saver = None
 
     def __init__(self, model, accuracy,
                  steps=1001, batch_size=128, learning_rate=0.1,
@@ -75,7 +74,6 @@ class Learner:
             print(self.tf_train_data)
             tf_train_labs = tf.placeholder(tf.float32, shape=(self.batch_size, label_len))
             tf_vail_data = tf.constant(vail_data)
-            print(tf_vail_data)
 
             # Training computation.
             with tf.variable_scope("predict") as scope:
@@ -91,7 +89,7 @@ class Learner:
         #########################
 
         with tf.Session(graph=self.graph) as session:
-            self.saver = tf.train.Saver()
+            saver = tf.train.Saver()
             tf.global_variables_initializer().run()
             print('Initialized')
             for step in range(self.steps):
@@ -110,12 +108,13 @@ class Learner:
                     print('Minibatch loss at step %d: %f' % (step, l))
                     print('Minibatch accuracy: %.1f%%' % self.func_accuracy(train_p, batch_labels))
                     print('Test accuracy: %.1f%%' % self.func_accuracy(vail_p, vail_labs))
-                    self.saver.save(session, './my-model')
+                    saver.save(session, './my-model')
             print("Test accuracy: %.1f%%" % self.func_accuracy(vail_p, vail_labs))
 
     def predict(self, x_data):
         with tf.Session(graph=self.graph) as session:
-            self.saver.restore(session, tf.train.latest_checkpoint('./'))
+            saver = tf.train.Saver()
+            saver.restore(session, tf.train.latest_checkpoint('./'))
             feed_dict = {
                 self.tf_train_data: x_data,
                 self.tf_drop: 0.85,
