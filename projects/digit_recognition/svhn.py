@@ -16,7 +16,7 @@ from tensorflow.python.framework import dtypes
 import h5py
 
 SOURCE_URL = 'http://ufldl.stanford.edu/housenumbers/'
-IMG_H, IMG_W = 66, 150
+IMG_H, IMG_W = 64, 128
 
 def maybe_extract(filename, force=False):
     root = os.path.splitext(os.path.splitext(filename)[0])[0]  # remove .tar.gz
@@ -35,6 +35,19 @@ def maybe_extract(filename, force=False):
     print(data_folders)
     return data_folders
 
+
+def read_img(filepath):
+    try:
+        image_data = ndimage.imread(filepath).astype(float)
+        image_data = image_data[:,:,0] * 0.2989 + image_data[:,:,1] * 0.5870 + image_data[:,:,2] * 0.114
+        # image_data = np.mean(image_data, -1)
+        image_data = (image_data - 255. / 2) / 255.
+        h = image_data.shape[0]
+        w = image_data.shape[1]
+        image_data = ndimage.zoom(image_data, [IMG_H / h, IMG_W / w])
+        return image_data
+    except IOError as e:
+        print('Could not read:', image_file, ':', e, '- it\'s ok, skipping.')
 
 
 def read_imgs(path):
@@ -60,26 +73,20 @@ def read_imgs(path):
             print('skip', i, labels)
             continue
         for j in range(min(len(labels), 5)):
-            label_onehot[j, labels[j]] = 1
+            n = labels[j]
+            if n == 10: n = 0
+            label_onehot[j, n] = 1
         for j in range(len(label), 5):
             label_onehot[j, 10] = 1
         labset[i, :, :] = label_onehot
         # read image
-        try:
-            image_data = ndimage.imread(img_file).astype(float)
-            image_data = image_data[:,:,0] * 0.2989 + image_data[:,:,1] * 0.5870 + image_data[:,:,2] * 0.114
-            # image_data = np.mean(image_data, -1)
-            image_data = (image_data - 255. / 2) / 255.
-            h = image_data.shape[0]
-            w = image_data.shape[1]
-            image_data = ndimage.zoom(image_data, [IMG_H / h, IMG_W / w])
+        image_data = read_img(img_file)
+        if image_data is not None:
             dataset[i, :, :] = image_data
-        except IOError as e:
-            print('Could not read:', image_file, ':', e, '- it\'s ok, skipping.')
     return dataset, labset
 
 
-def read_data_sets(train_dir, validation_size=5000):
+def read_data_sets(train_dir, validation_size=500):
     TRAIN_IMAGES = 'train.tar.gz'
     TEST_IMAGES = 'test.tar.gz'
 

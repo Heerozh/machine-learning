@@ -49,6 +49,7 @@ class Learner:
                  steps=1001, batch_size=128, learning_rate=0.1,
                  loss=tf.nn.sigmoid_cross_entropy_with_logits,
                  optimizer=tf.train.AdamOptimizer,
+                 drop=0.85,
                 ):
         self.func_model = model
         self.batch_size = batch_size
@@ -57,6 +58,7 @@ class Learner:
         self.func_loss = loss
         self.func_optimizer = optimizer
         self.learning_rate = learning_rate
+        self.drop = drop
 
     def fit(self, x_data, y_predict, vail_data, vail_labs):
         label_len = functools.reduce(np.dot, y_predict.shape[1:])
@@ -66,6 +68,7 @@ class Learner:
 
         self.graph = tf.Graph()
         with self.graph.as_default():
+            global_step = tf.Variable(0, trainable=False)
             # Input data.
             self.tf_drop = tf.placeholder_with_default(tf.constant(0.), None)
             self.tf_train_data = tf.placeholder(tf.float32)
@@ -84,7 +87,9 @@ class Learner:
 
             loss = self.func_loss(logits, tf_train_labs)
             # Optimizer.
-            optimizer = self.func_optimizer(self.learning_rate).minimize(loss)
+            decay_lr = tf.train.exponential_decay(self.learning_rate, global_step,
+                                                  self.steps, 0.1, staircase=True)
+            optimizer = self.func_optimizer(decay_lr).minimize(loss)
 
         #########################
 
@@ -99,7 +104,7 @@ class Learner:
                 feed_dict = {
                     self.tf_train_data: batch_data,
                     tf_train_labs: batch_labels.reshape(self.batch_size, label_len),
-                    self.tf_drop: 0.85,
+                    self.tf_drop: self.drop,
                 }
                 _, l, train_p, vail_p = session.run(
                     [optimizer, loss, self.train_predict, vail_prediction], feed_dict=feed_dict)
@@ -117,7 +122,7 @@ class Learner:
             saver.restore(session, tf.train.latest_checkpoint('./'))
             feed_dict = {
                 self.tf_train_data: x_data,
-                self.tf_drop: 0.85,
+                self.tf_drop: 1,
             }
             return session.run(self.train_predict, feed_dict=feed_dict)
 
