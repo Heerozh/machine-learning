@@ -1,2 +1,0 @@
-model_checkpoint_path: "softmax_svhn"
-all_model_checkpoint_paths: "softmax_svhn"
