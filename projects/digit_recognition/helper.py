@@ -45,11 +45,11 @@ class Learner:
     tf_drop = None
     tf_train_data = None
 
-    def __init__(self, model, accuracy,
+    def __init__(self, model, accuracy, filename,
                  steps=1001, batch_size=128, learning_rate=0.1,
                  loss=tf.nn.sigmoid_cross_entropy_with_logits,
                  optimizer=tf.train.AdamOptimizer,
-                 drop=0.85,
+                 drop=0.85
                 ):
         self.func_model = model
         self.batch_size = batch_size
@@ -59,6 +59,7 @@ class Learner:
         self.func_optimizer = optimizer
         self.learning_rate = learning_rate
         self.drop = drop
+        self.filename = filename
 
     def fit(self, x_data, y_predict, vail_data, vail_labs):
         label_len = functools.reduce(np.dot, y_predict.shape[1:])
@@ -88,7 +89,7 @@ class Learner:
             loss = self.func_loss(logits, tf_train_labs)
             # Optimizer.
             decay_lr = tf.train.exponential_decay(self.learning_rate, global_step,
-                                                  self.steps, 0.1, staircase=True)
+                                                  self.steps, 0.5, staircase=True)
             optimizer = self.func_optimizer(decay_lr).minimize(loss)
 
         #########################
@@ -113,13 +114,13 @@ class Learner:
                     print('Minibatch loss at step %d: %f' % (step, l))
                     print('Minibatch accuracy: %.1f%%' % self.func_accuracy(train_p, batch_labels))
                     print('Test accuracy: %.1f%%' % self.func_accuracy(vail_p, vail_labs))
-                    saver.save(session, './my-model')
+                    saver.save(session, './' + self.filename)
             print("Test accuracy: %.1f%%" % self.func_accuracy(vail_p, vail_labs))
 
     def predict(self, x_data):
         with tf.Session(graph=self.graph) as session:
             saver = tf.train.Saver()
-            saver.restore(session, tf.train.latest_checkpoint('./'))
+            saver.restore(session, './' + self.filename)
             feed_dict = {
                 self.tf_train_data: x_data,
                 self.tf_drop: 1,

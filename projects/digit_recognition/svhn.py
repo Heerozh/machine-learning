@@ -59,26 +59,35 @@ def read_imgs(path):
                          dtype=np.float32)
     labset = np.ndarray(shape=(len(name), 5, 11),
                          dtype=np.float32)
+    boxs = np.ndarray(shape=(len(name), 5, 4),
+                         dtype=np.float32)
     for i in range(len(name)):
         img_file = ''.join([chr(c[0]) for c in st[name[i][0]].value])
         img_file = os.path.join(path, img_file)
         # read labels
         label = st[bbox[i][0]]['label']
-        if len(label) == 1:
-            labels = [int(label[0][0])]
-        else:
-            labels = [int(st[ label[j][0] ][0][0]) for j in range(len(label))]
+        def get_attr(attr):
+            if len(attr) == 1:
+                return [int(attr[0][0])]
+            else:
+                return [int(st[ attr[j][0] ][0][0]) for j in range(len(attr))]
         label_onehot = np.zeros([5, 11], dtype=np.float32)
         if len(labels) > 5:
             print('skip', i, labels)
             continue
+        labels = get_attr(label)
         for j in range(min(len(labels), 5)):
             n = labels[j]
             if n == 10: n = 0
             label_onehot[j, n] = 1
+            boxs[i, j, 0] = get_attr(st[bbox[i][0]]['left'])
+            boxs[i, j, 1] = get_attr(st[bbox[i][0]]['top'])
+            boxs[i, j, 2] = get_attr(st[bbox[i][0]]['width'])
+            boxs[i, j, 3] = get_attr(st[bbox[i][0]]['height'])
         for j in range(len(label), 5):
             label_onehot[j, 10] = 1
         labset[i, :, :] = label_onehot
+
         # read image
         image_data = read_img(img_file)
         if image_data is not None:
