@@ -112,10 +112,10 @@ class Learner:
 
                 if step % 50 == 0:
                     print('Minibatch loss at step %d: %f' % (step, l))
-                    print('Minibatch accuracy: %.1f%%' % self.func_accuracy(train_p, batch_labels))
-                    print('Test accuracy: %.1f%%' % self.func_accuracy(vail_p, vail_labs))
+                    print('Minibatch %s: %.1f' % self.func_accuracy(train_p, batch_labels))
+                    print('Test %s: %.1f' % self.func_accuracy(vail_p, vail_labs))
                     saver.save(session, './' + self.filename)
-            print("Test accuracy: %.1f%%" % self.func_accuracy(vail_p, vail_labs))
+            print("Test %s: %.1f" % self.func_accuracy(vail_p, vail_labs))
 
     def predict(self, x_data):
         with tf.Session(graph=self.graph) as session:

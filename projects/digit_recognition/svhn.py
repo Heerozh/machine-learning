@@ -50,7 +50,8 @@ def crop_imgs(imgs, boxs):
         y2 = int(round(boxs[i][3]))
         img = imgs[i][y:y2, x:x2]
         img = ndimage.zoom(img, [IMG_H / (y2-y), IMG_W / (x2-x)])
-        crops[i, :, :] = img
+        if crops[i].shape != img.shape: print(i, crops[i].shape, img.shape, x,y,x2,y2)
+        crops[i, 0:img.shape[0], 0:img.shape[1]] = img
 
     return crops
 
