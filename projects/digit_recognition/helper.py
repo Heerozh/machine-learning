@@ -18,6 +18,7 @@ def conv_relu(x_input, kernel_shape, pool=False, drop=None):
     """build conv relu layer"""
     weights, biases = var(kernel_shape)
     conv = tf.nn.conv2d(x_input, weights, strides=[1, 1, 1, 1], padding='SAME')
+    print(conv)
     rtn = tf.nn.relu(conv + biases)
     if pool:
         rtn = tf.nn.max_pool(rtn, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
